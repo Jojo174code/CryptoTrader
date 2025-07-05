@@ -1,8 +1,6 @@
 {
-  "usd": 10000.0,
-  "holdings": {},
-  "avg_cost": {},
-  "hold_times": {},
-  "cooldowns": {},
-  "trade_history": []
+    "usd": 1000.0,
+    "holdings": {},
+    "pnl": 0.0,
+    "avg_cost": {}
 }
