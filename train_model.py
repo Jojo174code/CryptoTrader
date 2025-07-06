@@ -1,61 +1,60 @@
-# === train_model.py ===
 import pandas as pd
-import os
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-import pickle
+import joblib
 
-DATA_DIR = "data/historical"
-MODEL_FILE = "model.pkl"
+print("🔄 Loading price data...")
 
-# === Load and prepare data ===
-def load_price_data():
-    all_data = []
-    for file in os.listdir(DATA_DIR):
-        if file.endswith(".csv"):
-            df = pd.read_csv(os.path.join(DATA_DIR, file))
-            df["symbol"] = file.replace(".csv", "")
-            all_data.append(df)
-    return pd.concat(all_data).sort_values("timestamp")
+# ✅ Load historical Bitcoin data
+df = pd.read_csv("data/historical/bitcoin.csv")
+print(f"✅ Loaded {len(df)} rows.")
 
-def create_features_and_labels(df):
-    df["price_next"] = df["price"].shift(-1)
-    df["1h_change"] = df["price"].pct_change(periods=1) * 100
-    df["24h_change"] = df["price"].pct_change(periods=24) * 100
-    df.dropna(inplace=True)
+# ✅ Ensure timestamp is datetime
+df["timestamp"] = pd.to_datetime(df["timestamp"])
+df = df.sort_values("timestamp")
 
-    # Simple rule-based labeling
-    df["label"] = "HOLD"
-    df.loc[df["price_next"] > df["price"] * 1.002, "label"] = "BUY"
-    df.loc[df["price_next"] < df["price"] * 0.998, "label"] = "SELL"
+# ✅ Calculate percent changes
+df["1h_change"] = df["price"].pct_change(periods=1) * 100
+df["24h_change"] = df["price"].pct_change(periods=24) * 100
 
-    features = df[["price", "volume", "1h_change", "24h_change"]]
-    labels = df["label"]
-    return features, labels
+# ✅ Drop rows with missing values
+df.dropna(inplace=True)
 
-# === Train and save model ===
-def train_model():
-    print("🔄 Loading price data...")
-    df = load_price_data()
-    print(f"✅ Loaded {len(df)} rows.")
+# ✅ Features
+X = df[["price", "1h_change", "24h_change", "volume"]]
 
-    print("🧠 Creating training data...")
-    X, y = create_features_and_labels(df)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# ✅ Labeling logic
+labels = []
+threshold = 0.2  # 0.2% change
 
-    clf = DecisionTreeClassifier(max_depth=5, random_state=42)
-    clf.fit(X_train, y_train)
+for i in range(1, len(df)):
+    pct_change = (df["price"].iloc[i] - df["price"].iloc[i - 1]) / df["price"].iloc[i - 1]
+    if pct_change > threshold / 100:
+        labels.append("BUY")
+    elif pct_change < -threshold / 100:
+        labels.append("SELL")
+    else:
+        labels.append("HOLD")
 
-    print("📊 Classification report:")
-    y_pred = clf.predict(X_test)
-    print(classification_report(y_test, y_pred))
+# Align X with labels
+X = X.iloc[1:]
+y = labels
 
-    print("💾 Saving model to model.pkl...")
-    with open(MODEL_FILE, "wb") as f:
-        pickle.dump(clf, f)
-    print("✅ Model saved!")
+print("🧠 Creating training data...")
 
-if __name__ == "__main__":
-    train_model()
+# ✅ Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
+# ✅ Train model
+model = DecisionTreeClassifier()
+model.fit(X_train, y_train)
+
+# ✅ Evaluate model
+predictions = model.predict(X_test)
+print("📊 Classification report:")
+print(classification_report(y_test, predictions))
+
+# ✅ Save model
+joblib.dump(model, "model.pkl")
+print("💾 Saved model as model.pkl")

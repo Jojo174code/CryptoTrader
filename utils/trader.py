@@ -1,108 +1,84 @@
-# === trader.py ===
-import json
+# === utils/trader.py ===
+import csv
 import os
+import joblib
 from datetime import datetime
-import pickle
-import numpy as np
+from utils.wallet import load_wallet, save_wallet
 
-WALLET_FILE = "data/wallet.json"
-MODEL_FILE = "model.pkl"
+model = joblib.load("model.pkl")  # 🔮 Load ML model once
 
-# === Wallet Storage ===
-def save_wallet(wallet):
-    with open(WALLET_FILE, "w") as f:
-        json.dump(wallet, f, indent=2)
+TRADE_AMOUNT = 50  # USD per trade
 
-def load_wallet():
-    if os.path.exists(WALLET_FILE):
-        with open(WALLET_FILE, "r") as f:
-            return json.load(f)
-    return {"usd": 10000.0, "holdings": {}, "avg_cost": {}, "hold_times": {}, "cooldowns": {}, "trade_history": []}
 
-# === Load Trained Model ===
-if os.path.exists(MODEL_FILE):
-    with open(MODEL_FILE, "rb") as f:
-        model = pickle.load(f)
-else:
-    model = None
-    print("⚠️ AI model not found. Skipping prediction.")
-
-# === Trade Simulation ===
-def simulate_trades(coins):
+def simulate_trades(top_coins):
     wallet = load_wallet()
     trades = []
-    timestamp = datetime.utcnow().isoformat()
 
-    for coin in coins:
-        name = coin["name"]
+    for coin in top_coins:
         symbol = coin["symbol"]
+        name = coin["name"]
         price = coin["price"]
         volume = coin["volume"]
-        change_1h = coin.get("1h_change", 0) * 100
-        change_24h = coin.get("24h_change", 0) * 100
+        one_hour_change = coin["1h_change"]
+        twentyfour_hour_change = coin["24h_change"]
 
-        # === Use AI to predict action ===
-        if model:
-            features = np.array([[price, volume, change_1h, change_24h]])
-            action = model.predict(features)[0]
-        else:
-            action = "HOLD"
+        features = [[price, one_hour_change, twentyfour_hour_change, volume]]
+        prediction = model.predict(features)[0]
 
-        # === Execute trade based on prediction ===
-        if action == "BUY" and wallet["usd"] >= 50:
-            wallet["usd"] -= 50
-            wallet["holdings"][symbol] = wallet["holdings"].get(symbol, 0) + 50 / price
+        timestamp = datetime.utcnow().isoformat()
+        action = prediction
+
+        if action == "BUY" and wallet["usd"] >= TRADE_AMOUNT:
+            wallet["usd"] -= TRADE_AMOUNT
+            wallet["holdings"].setdefault(symbol, 0)
+            wallet["holdings"][symbol] += TRADE_AMOUNT / price
+            wallet["avg_cost"].setdefault(symbol, price)
             wallet["avg_cost"][symbol] = price
             wallet["hold_times"][symbol] = timestamp
-            trades.append({
-                "timestamp": timestamp,
-                "coin": name,
-                "symbol": symbol,
-                "price": price,
-                "action": "BUY",
-                "usd_amount": 50.0,
-                "volume": volume,
-                "portfolio_value": wallet["usd"] + sum(wallet["holdings"][s] * coin["price"] for s in wallet["holdings"] if s == symbol),
-                "pnl": round(sum((price - wallet["avg_cost"][s]) * wallet["holdings"][s] for s in wallet["holdings"]), 2)
-            })
 
-        if action == "SELL" and symbol in wallet["holdings"]:
+        elif action == "SELL" and symbol in wallet["holdings"]:
             qty = wallet["holdings"][symbol]
-            avg = wallet["avg_cost"].get(symbol, 0)
-            sell_amount = qty * price
-            wallet["usd"] += sell_amount
+            cost_basis = wallet["avg_cost"].get(symbol, price)
+            proceeds = qty * price
+            profit = proceeds - (qty * cost_basis)
+            wallet["usd"] += proceeds
+            wallet["pnl"] += profit
             del wallet["holdings"][symbol]
             del wallet["avg_cost"][symbol]
-            trades.append({
-                "timestamp": timestamp,
-                "coin": name,
-                "symbol": symbol,
-                "price": price,
-                "action": "SELL",
-                "usd_amount": round(sell_amount, 2),
-                "volume": volume,
-                "portfolio_value": wallet["usd"],
-                "pnl": round((price - avg) * qty, 2)
-            })
+            wallet["hold_times"].pop(symbol, None)
+
+        else:
+            continue
+
+        portfolio_value = wallet["usd"] + sum(
+            wallet["holdings"].get(s, 0) * coin["price"] for s in wallet["holdings"]
+        )
+
+        trade = {
+            "timestamp": timestamp,
+            "coin": name,
+            "symbol": symbol,
+            "price": price,
+            "action": action,
+            "usd_amount": TRADE_AMOUNT,
+            "volume": volume,
+            "portfolio_value": round(portfolio_value, 2),
+            "pnl": round(wallet["pnl"], 2)
+        }
+
+        wallet["trade_log"].append(trade)
+        trades.append(trade)
 
     save_wallet(wallet)
     return trades
 
-# === Logging ===
-def log_trades_to_csv(trades, filename="data/trades.csv"):
-    import csv
+
+def log_trades_to_csv(trades, path="data/trades.csv"):
     if not trades:
-        print("No trades to log.")
         return
-
-    header = list(trades[0].keys())
-    file_exists = os.path.exists(filename)
-
-    with open(filename, "a", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=header)
-        if not file_exists or os.stat(filename).st_size == 0:
+    file_exists = os.path.isfile(path)
+    with open(path, mode="a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=trades[0].keys())
+        if not file_exists:
             writer.writeheader()
         writer.writerows(trades)
-
-    print(f"Logged {len(trades)} simulated trade(s) to {filename}")
-

@@ -1,15 +1,16 @@
+# === wallet.py ===
 import json
 import os
 
 WALLET_FILE = "wallet.json"
 
 DEFAULT_WALLET = {
-    "usd": 1000.0,           # Starting USD balance
-    "holdings": {},          # {symbol: quantity}
-    "avg_cost": {},          # {symbol: average buy price}
-    "hold_times": {},        # {symbol: timestamp of last buy}
-    "pnl": 0.0,              # Total profit/loss
-    "trade_log": []          # Optional: list of trades
+    "usd": 1000.0,
+    "holdings": {},
+    "avg_cost": {},
+    "hold_times": {},
+    "pnl": 0.0,
+    "trade_log": []
 }
 
 def load_wallet():

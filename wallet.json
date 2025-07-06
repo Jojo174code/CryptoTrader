@@ -1,8 +1,68 @@
 {
-    "usd": 1000.0,
-    "holdings": {},
-    "avg_cost": {},
-    "hold_times": {},
+    "usd": 800.0,
+    "holdings": {
+        "eth": 0.019866891824774014,
+        "usdt": 50.0,
+        "xrp": 22.624434389140273,
+        "bnb": 0.07627532340737125
+    },
+    "avg_cost": {
+        "eth": 2516.75,
+        "usdt": 1.0,
+        "xrp": 2.21,
+        "bnb": 655.52
+    },
+    "hold_times": {
+        "eth": "2025-07-05T21:46:48.092210",
+        "usdt": "2025-07-05T21:46:48.092210",
+        "xrp": "2025-07-05T21:46:48.092210",
+        "bnb": "2025-07-05T21:46:48.092210"
+    },
     "pnl": 0.0,
-    "trade_log": []
+    "trade_log": [
+        {
+            "timestamp": "2025-07-05T21:46:48.092210",
+            "coin": "Ethereum",
+            "symbol": "eth",
+            "price": 2516.75,
+            "action": "BUY",
+            "usd_amount": 50.0,
+            "volume": 7163315377,
+            "portfolio_value": 1000.0,
+            "pnl": 0.0
+        },
+        {
+            "timestamp": "2025-07-05T21:46:48.092210",
+            "coin": "Tether",
+            "symbol": "usdt",
+            "price": 1.0,
+            "action": "BUY",
+            "usd_amount": 50.0,
+            "volume": 22324628285,
+            "portfolio_value": 1000.0,
+            "pnl": 0.0
+        },
+        {
+            "timestamp": "2025-07-05T21:46:48.092210",
+            "coin": "XRP",
+            "symbol": "xrp",
+            "price": 2.21,
+            "action": "BUY",
+            "usd_amount": 50.0,
+            "volume": 995250440,
+            "portfolio_value": 1000.0,
+            "pnl": 0.0
+        },
+        {
+            "timestamp": "2025-07-05T21:46:48.092210",
+            "coin": "BNB",
+            "symbol": "bnb",
+            "price": 655.52,
+            "action": "BUY",
+            "usd_amount": 50.0,
+            "volume": 380235237,
+            "portfolio_value": 1000.0,
+            "pnl": 0.0
+        }
+    ]
 }
